@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:http/http.dart' as http;
@@ -30,9 +31,15 @@ class StravaAuthService {
   /// Avatar URL del atleta
   Future<String?> get athleteAvatar => _storage.read(key: _keyAthleteAvatar);
 
+  String? _lastError;
+  String? get lastError => _lastError;
+
   /// Inicia el flujo OAuth2 abriendo el browser
   Future<bool> login() async {
     try {
+      _lastError = null;
+      debugPrint('[STRAVA_AUTH] Starting OAuth flow...');
+
       final url = Uri.parse(
         '${StravaConfig.authorizeUrl}'
         '?client_id=${StravaConfig.clientId}'
@@ -42,37 +49,76 @@ class StravaAuthService {
         '&scope=${StravaConfig.scopes}',
       );
 
+      debugPrint('[STRAVA_AUTH] OAuth URL: $url');
+      debugPrint('[STRAVA_AUTH] Callback: ${StravaConfig.redirectUri}');
+
       final result = await FlutterWebAuth2.authenticate(
         url: url.toString(),
-        callbackUrlScheme: 'rowmate',
+        callbackUrlScheme: StravaConfig.callbackUrlScheme,
+        options: const FlutterWebAuth2Options(
+          preferEphemeral: false,
+        ),
       );
 
-      final code = Uri.parse(result).queryParameters['code'];
-      if (code == null) return false;
+      debugPrint('[STRAVA_AUTH] Received callback: $result');
 
+      final callbackUri = Uri.parse(result);
+      final code = callbackUri.queryParameters['code'];
+      final error = callbackUri.queryParameters['error'];
+
+      if (error != null) {
+        _lastError = 'Strava error: $error';
+        debugPrint('[STRAVA_AUTH] ERROR from Strava: $error');
+        return false;
+      }
+
+      if (code == null) {
+        _lastError = 'No authorization code received. Callback: $result';
+        debugPrint('[STRAVA_AUTH] ERROR: No code in callback. Full URL: $result');
+        return false;
+      }
+
+      debugPrint('[STRAVA_AUTH] Got authorization code, exchanging...');
       return _exchangeCode(code);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _lastError = 'OAuth error: $e';
+      debugPrint('[STRAVA_AUTH] ERROR: $e');
+      debugPrint('[STRAVA_AUTH] Stack: $stackTrace');
       return false;
     }
   }
 
   /// Intercambia el código de autorización por tokens
   Future<bool> _exchangeCode(String code) async {
-    final response = await http.post(
-      Uri.parse(StravaConfig.tokenUrl),
-      body: {
-        'client_id': StravaConfig.clientId,
-        'client_secret': StravaConfig.clientSecret,
-        'code': code,
-        'grant_type': 'authorization_code',
-      },
-    );
+    try {
+      debugPrint('[STRAVA_AUTH] Exchanging code for tokens...');
+      final response = await http.post(
+        Uri.parse(StravaConfig.tokenUrl),
+        body: {
+          'client_id': StravaConfig.clientId,
+          'client_secret': StravaConfig.clientSecret,
+          'code': code,
+          'grant_type': 'authorization_code',
+        },
+      );
 
-    if (response.statusCode != 200) return false;
+      debugPrint('[STRAVA_AUTH] Token response: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        _lastError = 'Token exchange failed: ${response.body}';
+        debugPrint('[STRAVA_AUTH] ERROR: ${response.body}');
+        return false;
+      }
 
-    final data = json.decode(response.body) as Map<String, dynamic>;
-    await _saveTokens(data);
-    return true;
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      await _saveTokens(data);
+      debugPrint('[STRAVA_AUTH] Tokens saved successfully!');
+      return true;
+    } catch (e, stackTrace) {
+      _lastError = 'Token exchange error: $e';
+      debugPrint('[STRAVA_AUTH] Exception in _exchangeCode: $e');
+      debugPrint('[STRAVA_AUTH] Stack: $stackTrace');
+      return false;
+    }
   }
 
   /// Devuelve un access token válido, refrescando si es necesario

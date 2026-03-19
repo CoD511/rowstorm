@@ -4,10 +4,14 @@ import 'strava_secrets.dart';
 class StravaConfig {
   static const clientId = stravaClientId;
   static const clientSecret = stravaClientSecret;
-  static const redirectUri = 'rowmate://rowmate';
+
+  // Custom URL scheme — same on all platforms (Android, iOS, macOS)
+  static const redirectUri = 'rowmate://rowmate.app/callback';
+  static const callbackUrlScheme = 'rowmate';
+
   static const scopes = 'activity:read_all,activity:write';
 
-  static const authorizeUrl = 'https://www.strava.com/oauth/mobile/authorize';
+  static const authorizeUrl = 'https://www.strava.com/oauth/authorize';
   static const tokenUrl = 'https://www.strava.com/oauth/token';
   static const apiBase = 'https://www.strava.com/api/v3';
 

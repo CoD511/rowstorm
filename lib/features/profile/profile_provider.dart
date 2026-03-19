@@ -51,14 +51,19 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<bool> connectStrava() async {
+    debugPrint('[PROFILE] connectStrava() called');
     _lastError = null;
     final success = await _auth.login();
+    debugPrint('[PROFILE] login() returned: $success');
     if (success) {
       _connected = true;
       _athleteName = await _auth.athleteName;
       _athleteAvatar = await _auth.athleteAvatar;
+      debugPrint('[PROFILE] Connected as: $_athleteName');
     } else {
-      _lastError = 'Failed to connect to Strava';
+      // Get detailed error from auth service
+      _lastError = _auth.lastError ?? 'Failed to connect to Strava';
+      debugPrint('[PROFILE] ERROR: $_lastError');
     }
     notifyListeners();
     return success;

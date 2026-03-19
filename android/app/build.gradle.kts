@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.rower_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion // Commented out - not needed for this app
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

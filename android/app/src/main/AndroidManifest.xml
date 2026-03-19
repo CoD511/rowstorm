@@ -37,12 +37,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Strava OAuth callback deep link -->
-            <intent-filter>
+        </activity>
+        <!-- flutter_web_auth_2 callback activity for OAuth redirects -->
+        <activity
+            android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth_2">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="rowmate" android:host="rowmate" />
+                <data android:scheme="rowmate" />
             </intent-filter>
         </activity>
         <meta-data
